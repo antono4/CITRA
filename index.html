@@ -96,8 +96,63 @@
     <div class="result-bar" id="resultBar">
       <div class="meta" id="resultMeta"></div>
       <div class="actions">
+        <button class="btn-ghost btn-video" id="makeVideoBtn">🎬 Buat Video dari Gambar Ini</button>
         <a class="btn-ghost" id="downloadBtn" download="citra.png">⬇ Unduh PNG</a>
         <button class="btn-ghost" id="copyPromptBtn">⧉ Salin Prompt</button>
+      </div>
+    </div>
+
+    <!-- ============ VIDEO PANEL ============ -->
+    <div class="video-panel" id="videoPanel">
+      <div class="video-head">
+        <h2 class="video-title">Animasikan <em>→ Video</em></h2>
+        <button class="btn-ghost" id="closeVideoBtn">✕ Tutup</button>
+      </div>
+      <div class="video-controls">
+        <div class="field">
+          <label>Prompt gerakan (opsional)</label>
+          <textarea id="videoPrompt" class="video-ta" placeholder="mis: kabut bergerak perlahan, kamera mendekat pelan, awan mengalir…"></textarea>
+        </div>
+        <div class="field">
+          <label>Model video</label>
+          <select id="videoModel">
+            <option value="">Default (cepat)</option>
+            <option value="veo-2.0-generate-001">Veo 2.0</option>
+            <option value="veo-3.0-fast-generate-001">Veo 3.0 Fast</option>
+            <option value="veo-3.0-generate-001">Veo 3.0</option>
+            <option value="veo-3.1-fast-generate-preview">Veo 3.1 Fast (preview)</option>
+            <option value="veo-3.1-generate-preview">Veo 3.1 (preview)</option>
+            <option value="veo-3.1-lite-generate-preview">Veo 3.1 Lite (preview)</option>
+            <option value="sora-2">Sora 2</option>
+            <option value="sora-2-pro">Sora 2 Pro</option>
+          </select>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Durasi</label>
+            <select id="videoSeconds">
+              <option value="4">4 detik</option>
+              <option value="6" selected>6 detik</option>
+              <option value="8">8 detik</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Resolusi</label>
+            <select id="videoSize">
+              <option value="1280x720" selected>720p (16:9)</option>
+              <option value="720x1280">720p vertikal (9:16)</option>
+              <option value="1920x1080">1080p (16:9)</option>
+            </select>
+          </div>
+        </div>
+        <button class="gen-btn video-go" id="genVideoBtn">
+          <span class="spin">◌</span> <span id="genVideoLabel">Generate Video</span>
+        </button>
+        <p class="hint">Gambar terakhir di viewport dipakai sebagai frame pertama (image-to-video). Proses bisa memakan waktu beberapa menit — jangan tutup halaman.</p>
+      </div>
+      <div class="video-stage" id="videoStage" style="display:none">
+        <div class="video-out" id="videoOut"></div>
+        <a class="btn-ghost" id="videoDownloadBtn" download="citra-video.mp4">⬇ Unduh MP4</a>
       </div>
     </div>
 

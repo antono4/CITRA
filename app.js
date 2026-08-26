@@ -176,3 +176,84 @@ function renderHistory(){
 $('prompt').addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='Enter') $('genBtn').click();
 });
+
+/* ---------- image to video ---------- */
+function currentImageSrc(){
+  const img=$('viewport').querySelector('img.result');
+  return img?img.src:null;
+}
+
+// Veo butuh input_reference berupa base64/data-URI; konversi URL bila perlu
+async function toDataURI(src){
+  if(/^data:/i.test(src)) return src;
+  try{
+    const res=await fetch(src);
+    const blob=await res.blob();
+    return await new Promise((ok,err)=>{
+      const r=new FileReader();
+      r.onload=()=>ok(r.result);
+      r.onerror=err;
+      r.readAsDataURL(blob);
+    });
+  }catch(e){
+    console.warn('konversi ke data-URI gagal, kirim apa adanya',e);
+    return src;
+  }
+}
+
+$('makeVideoBtn').onclick=()=>{
+  if(!currentImageSrc()){ toast('Belum ada gambar untuk dianimasikan.'); return; }
+  $('videoPanel').classList.add('on');
+  $('videoPanel').scrollIntoView({behavior:'smooth',block:'start'});
+};
+$('closeVideoBtn').onclick=()=>$('videoPanel').classList.remove('on');
+
+$('genVideoBtn').onclick=async()=>{
+  const src=currentImageSrc();
+  if(!src){ toast('Belum ada gambar untuk dianimasikan.'); return; }
+
+  const motion=$('videoPrompt').value.trim();
+  const model=$('videoModel').value.trim();
+  const options={};
+  if(model) options.model=model;
+  options.seconds=parseInt($('videoSeconds').value)||6;
+  options.size=$('videoSize').value;
+  options.input_reference=await toDataURI(src); // frame pertama = gambar hasil generate
+
+  const prompt=(motion||'animasikan gambar ini secara sinematik, gerakan halus').slice(0,1500);
+
+  const btn=$('genVideoBtn');
+  btn.disabled=true; btn.classList.add('loading');
+  $('genVideoLabel').textContent='Memproses… (bisa beberapa menit)';
+  const stage=$('videoStage'); stage.style.display='block';
+  const out=$('videoOut');
+  out.innerHTML=`<div class="video-loading"><div class="bar"></div><p>AI sedang merender video…</p></div>`;
+  $('videoDownloadBtn').style.display='none';
+
+  try{
+    const video=await puter.ai.txt2vid(prompt, options);
+    out.innerHTML='';
+    out.appendChild(video);
+    const vsrc=video.getAttribute('src')||video.currentSrc||'';
+    if(vsrc){
+      const dl=$('videoDownloadBtn');
+      dl.href=vsrc;
+      dl.setAttribute('download','citra-video-'+Date.now()+'.mp4');
+      dl.style.display='inline-flex';
+    }
+    toast('Video selesai dibuat ✓');
+  }catch(err){
+    console.error(err);
+    out.innerHTML='';
+    stage.style.display='none';
+    const msg=(err&&err.message)||'';
+    if(/auth|sign|401|403/i.test(msg)){
+      toast('Perlu masuk dulu — klik "Masuk dengan Puter" di kanan atas.');
+    }else{
+      toast('Gagal membuat video: '+(msg||'coba model/durasi lain.'));
+    }
+  }finally{
+    btn.disabled=false; btn.classList.remove('loading');
+    $('genVideoLabel').textContent='Generate Video';
+  }
+};

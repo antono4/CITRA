@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CITRA — Studio AI Generator Gambar</title>
+<script src="https://js.puter.com/v2/"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>CITRA<em>.</em></h1>
+    <span class="tag">Studio AI Generator Gambar</span>
+  </div>
+  <button class="auth-btn" id="authBtn">Masuk dengan Puter</button>
+</header>
+
+<main>
+  <!-- ============ CONTROL PANEL ============ -->
+  <section class="panel">
+    <div class="field">
+      <label>Prompt — deskripsikan gambarmu</label>
+      <textarea id="prompt" placeholder="contoh: seekor komodo mengenakan batik, gaya lukisan cat minyak, cahaya senja keemasan…"></textarea>
+    </div>
+
+    <div class="field">
+      <label>Gaya cepat</label>
+      <div class="chips" id="styleChips"></div>
+    </div>
+
+    <div class="field">
+      <label>Model AI</label>
+      <select id="model">
+        <option value="">Default (cepat & gratis)</option>
+        <option value="gpt-image-1-mini">GPT Image 1 Mini</option>
+        <option value="gpt-image-1">GPT Image 1</option>
+        <option value="gpt-image-1.5">GPT Image 1.5</option>
+        <option value="gpt-image-2">GPT Image 2 (terbaik)</option>
+      </select>
+    </div>
+
+    <div class="field" id="qualityField" style="display:none">
+      <label>Kualitas</label>
+      <select id="quality">
+        <option value="low">Rendah (cepat)</option>
+        <option value="medium" selected>Sedang</option>
+        <option value="high">Tinggi</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Rasio aspek</label>
+      <div class="ratios" id="ratios"></div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Seed (opsional)</label>
+        <input type="number" id="seed" placeholder="acak">
+      </div>
+      <div class="field">
+        <label>Langkah (steps)</label>
+        <input type="number" id="steps" value="20" min="1" max="50">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Negative prompt (opsional)</label>
+      <input type="text" id="negative" placeholder="mis: buram, teks, watermark, cacat">
+    </div>
+
+    <button class="gen-btn" id="genBtn">
+      <span class="spin">◌</span> <span id="genLabel">Generate Gambar</span>
+    </button>
+    <p class="hint">Ditenagai Puter.js — tanpa API key, tanpa server. Seed kosong = hasil acak. Isi seed yang sama untuk mereproduksi gambar. Shortcut: Ctrl+Enter.</p>
+  </section>
+
+  <!-- ============ STAGE ============ -->
+  <section class="stage">
+    <div class="viewport" id="viewport">
+      <div class="empty" id="emptyState">
+        <span class="glyph">✳</span>
+        <p>BELUM ADA GAMBAR — TULIS PROMPT LALU TEKAN GENERATE</p>
+      </div>
+      <div class="shimmer" id="shimmer">
+        <div class="bar"></div>
+        <p id="shimmerText">AI sedang melukis…</p>
+      </div>
+    </div>
+
+    <div class="result-bar" id="resultBar">
+      <div class="meta" id="resultMeta"></div>
+      <div class="actions">
+        <a class="btn-ghost" id="downloadBtn" download="citra.png">⬇ Unduh PNG</a>
+        <button class="btn-ghost" id="copyPromptBtn">⧉ Salin Prompt</button>
+      </div>
+    </div>
+
+    <div class="history">
+      <h2>Galeri Sesi <span class="count" id="histCount">0</span></h2>
+      <div class="grid" id="grid"></div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

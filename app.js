@@ -87,13 +87,19 @@ $('genBtn').onclick=async()=>{
   const seedVal=$('seed').value.trim();
   const options={};
 
+  // Skala ukuran hanya untuk model default (model GPT pakai ukuran tetap)
+  const scale=parseFloat($('size').value)||1;
+  const to8=n=>Math.max(8,Math.round(n/8)*8);
+  let dispW=r.w, dispH=r.h;
+
   if(model){
     options.model=model;
     options.quality=$('quality').value;
     options.ratio={w:r.w,h:r.h};
   }else{
-    options.width=r.w; options.height=r.h;
-    options.steps=parseInt($('steps').value)||20;
+    dispW=to8(r.w*scale); dispH=to8(r.h*scale);
+    options.width=dispW; options.height=dispH;
+    options.steps=parseInt($('steps').value)||12;
     if(seedVal) options.seed=parseInt(seedVal);
     const neg=$('negative').value.trim();
     if(neg) options.negative_prompt=neg;
@@ -121,7 +127,7 @@ $('genBtn').onclick=async()=>{
 
     $('resultMeta').innerHTML=
       `“${base.length>80?base.slice(0,80)+'…':base}”<br>`+
-      `${model||'default'} · ${r.label} (${r.w}×${r.h}) · ${secs}s`;
+      `${model||'default'} · ${r.label} (${dispW}×${dispH}) · ${secs}s`;
     $('downloadBtn').href=src;
     $('downloadBtn').setAttribute('download','citra-'+Date.now()+'.png');
     $('resultBar').classList.add('on');

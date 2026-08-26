@@ -37,10 +37,30 @@
       <label>Model AI</label>
       <select id="model">
         <option value="">Default (cepat & gratis)</option>
-        <option value="gpt-image-1-mini">GPT Image 1 Mini</option>
-        <option value="gpt-image-1">GPT Image 1</option>
-        <option value="gpt-image-1.5">GPT Image 1.5</option>
-        <option value="gpt-image-2">GPT Image 2 (terbaik)</option>
+        <optgroup label="OpenAI">
+          <option value="gpt-image-1-mini">GPT Image 1 Mini</option>
+          <option value="gpt-image-1">GPT Image 1</option>
+          <option value="gpt-image-1.5">GPT Image 1.5</option>
+          <option value="gpt-image-2">GPT Image 2 (terbaik)</option>
+        </optgroup>
+        <optgroup label="Google Gemini">
+          <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash Image (Nano Banana)</option>
+        </optgroup>
+        <optgroup label="xAI Grok">
+          <option value="grok-imagine-image">Grok Imagine (cepat)</option>
+          <option value="grok-imagine-image-quality">Grok Imagine Quality</option>
+        </optgroup>
+        <optgroup label="FLUX (Replicate)">
+          <option value="black-forest-labs/flux-schnell">FLUX Schnell (sangat cepat)</option>
+          <option value="black-forest-labs/flux-1.1-pro">FLUX 1.1 Pro</option>
+          <option value="black-forest-labs/flux-2-dev">FLUX 2 Dev</option>
+          <option value="black-forest-labs/flux-2-pro">FLUX 2 Pro</option>
+          <option value="black-forest-labs/flux-2-klein-9b-base">FLUX 2 Klein 9B</option>
+        </optgroup>
+        <optgroup label="Leonardo (Replicate)">
+          <option value="leonardoai/lucid-origin">Lucid Origin</option>
+          <option value="leonardoai/phoenix-1.0">Phoenix 1.0</option>
+        </optgroup>
       </select>
     </div>
 
@@ -58,7 +78,7 @@
       <div class="ratios" id="ratios"></div>
     </div>
 
-    <div class="field">
+    <div class="field" id="sizeField">
       <label>Ukuran gambar (model default)</label>
       <select id="size">
         <option value="0.5">Kecil — jauh lebih cepat</option>
@@ -68,17 +88,17 @@
     </div>
 
     <div class="row2">
-      <div class="field">
+      <div class="field" id="seedField">
         <label>Seed (opsional)</label>
         <input type="number" id="seed" placeholder="acak">
       </div>
-      <div class="field">
+      <div class="field" id="stepsField">
         <label>Langkah (steps) — sedikit = cepat</label>
         <input type="number" id="steps" value="12" min="1" max="50">
       </div>
     </div>
 
-    <div class="field">
+    <div class="field" id="negativeField">
       <label>Negative prompt (opsional)</label>
       <input type="text" id="negative" placeholder="mis: buram, teks, watermark, cacat">
     </div>
@@ -86,7 +106,7 @@
     <button class="gen-btn" id="genBtn">
       <span class="spin">◌</span> <span id="genLabel">Generate Gambar</span>
     </button>
-    <p class="hint">Ditenagai Puter.js — tanpa API key, tanpa server. Biar lebih cepat: pakai model default, ukuran Kecil/Sedang, steps rendah, atau kualitas Rendah untuk model GPT. Seed kosong = hasil acak. Shortcut: Ctrl+Enter.</p>
+    <p class="hint">Ditenagai Puter.js — tanpa API key, tanpa server. 15+ model dari OpenAI, Gemini, Grok, FLUX & Leonardo. Biar lebih cepat: pakai model default / FLUX Schnell / Grok Imagine, kualitas terendah, atau ukuran Kecil. Rasio aspek tidak berlaku untuk Grok. Shortcut: Ctrl+Enter.</p>
   </section>
 
   <!-- ============ STAGE ============ -->

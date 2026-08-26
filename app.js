@@ -20,12 +20,13 @@ STYLES.forEach((s,i)=>{
 });
 
 /* ---------- aspect ratios ---------- */
+/* rw/rh = rasio dalam unit kecil untuk provider yang menerima rasio (Gemini/Replicate) */
 const RATIOS=[
-  {label:'1:1', w:1024,h:1024, bw:16,bh:16},
-  {label:'3:2', w:1536,h:1024, bw:20,bh:13},
-  {label:'2:3', w:1024,h:1536, bw:13,bh:20},
-  {label:'16:9',w:1536,h:864,  bw:22,bh:12},
-  {label:'9:16',w:864, h:1536, bw:12,bh:22},
+  {label:'1:1', w:1024,h:1024, rw:1, rh:1,  bw:16,bh:16},
+  {label:'3:2', w:1536,h:1024, rw:3, rh:2,  bw:20,bh:13},
+  {label:'2:3', w:1024,h:1536, rw:2, rh:3,  bw:13,bh:20},
+  {label:'16:9',w:1536,h:864,  rw:16,rh:9,  bw:22,bh:12},
+  {label:'9:16',w:864, h:1536, rw:9, rh:16, bw:12,bh:22},
 ];
 let ratioIdx=0;
 RATIOS.forEach((r,i)=>{
@@ -36,10 +37,39 @@ RATIOS.forEach((r,i)=>{
   $('ratios').appendChild(b);
 });
 
-/* ---------- model / quality visibility ---------- */
-$('model').addEventListener('change', e=>{
-  $('qualityField').style.display = e.target.value ? 'block' : 'none';
-});
+/* ---------- model / provider handling ---------- */
+const MODEL_KINDS={
+  'gpt-image-1-mini':'openai', 'gpt-image-1':'openai', 'gpt-image-1.5':'openai', 'gpt-image-2':'openai',
+  'gemini-3.1-flash-image-preview':'gemini',
+  'grok-imagine-image':'xai', 'grok-imagine-image-quality':'xai',
+  'black-forest-labs/flux-schnell':'replicate', 'black-forest-labs/flux-1.1-pro':'replicate',
+  'black-forest-labs/flux-2-dev':'replicate', 'black-forest-labs/flux-2-pro':'replicate',
+  'black-forest-labs/flux-2-klein-9b-base':'replicate',
+  'leonardoai/lucid-origin':'replicate', 'leonardoai/phoenix-1.0':'replicate',
+};
+const kindOf=m=>MODEL_KINDS[m]||'together';
+
+const QUALITY_OPTS={
+  openai:[['low','Rendah (paling cepat)'],['medium','Sedang'],['high','Tinggi (paling lambat)']],
+  gemini:[['1K','1K (paling cepat)'],['2K','2K (lebih tajam)'],['4K','4K (paling detail)']],
+  xai:[['1k','1K (paling cepat)'],['2k','2K (lebih tajam)']],
+};
+
+function updateModelFields(){
+  const k=kindOf($('model').value);
+  if(QUALITY_OPTS[k]){
+    $('quality').innerHTML=QUALITY_OPTS[k].map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+    $('qualityField').style.display='block';
+  }else{
+    $('qualityField').style.display='none';
+  }
+  $('sizeField').style.display     = k==='together' ? 'block':'none';
+  $('stepsField').style.display    = k==='together' ? 'block':'none';
+  $('negativeField').style.display = k==='together' ? 'block':'none';
+  $('seedField').style.display     = (k==='together'||k==='replicate') ? 'block':'none';
+}
+$('model').addEventListener('change',updateModelFields);
+updateModelFields();
 
 /* ---------- auth ---------- */
 async function refreshAuth(){
@@ -87,15 +117,32 @@ $('genBtn').onclick=async()=>{
   const seedVal=$('seed').value.trim();
   const options={};
 
-  // Skala ukuran hanya untuk model default (model GPT pakai ukuran tetap)
+  const kind=kindOf(model);
+
+  // Skala ukuran hanya untuk model default (model lain pakai rasio/ukuran bawaan provider)
   const scale=parseFloat($('size').value)||1;
   const to8=n=>Math.max(8,Math.round(n/8)*8);
   let dispW=r.w, dispH=r.h;
 
-  if(model){
+  if(kind==='openai'){
+    options.provider='openai-image-generation';
     options.model=model;
     options.quality=$('quality').value;
     options.ratio={w:r.w,h:r.h};
+  }else if(kind==='gemini'){
+    options.provider='gemini';
+    options.model=model;
+    options.quality=$('quality').value;
+    options.ratio={w:r.rw,h:r.rh};
+  }else if(kind==='xai'){
+    options.provider='xai';
+    options.model=model;
+    options.quality=$('quality').value;
+  }else if(kind==='replicate'){
+    options.provider='replicate-image-generation';
+    options.model=model;
+    options.ratio={w:r.rw,h:r.rh};
+    if(seedVal) options.seed=parseInt(seedVal);
   }else{
     dispW=to8(r.w*scale); dispH=to8(r.h*scale);
     options.width=dispW; options.height=dispH;
@@ -125,9 +172,11 @@ $('genBtn').onclick=async()=>{
     img.alt=base;
     $('viewport').appendChild(img);
 
+    const modelLabel=model?$('model').selectedOptions[0].textContent:'default';
+    const dims=(kind==='together'||kind==='openai')?` (${dispW}×${dispH})`:'';
     $('resultMeta').innerHTML=
       `“${base.length>80?base.slice(0,80)+'…':base}”<br>`+
-      `${model||'default'} · ${r.label} (${dispW}×${dispH}) · ${secs}s`;
+      `${modelLabel} · ${r.label}${dims} · ${secs}s`;
     $('downloadBtn').href=src;
     $('downloadBtn').setAttribute('download','citra-'+Date.now()+'.png');
     $('resultBar').classList.add('on');

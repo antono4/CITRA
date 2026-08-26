@@ -116,33 +116,24 @@
         <div class="field">
           <label>Model video</label>
           <select id="videoModel">
-            <option value="">Default (cepat)</option>
+            <option value="sora-2" selected>Sora 2 (default)</option>
+            <option value="sora-2-pro">Sora 2 Pro</option>
             <option value="veo-2.0-generate-001">Veo 2.0</option>
             <option value="veo-3.0-fast-generate-001">Veo 3.0 Fast</option>
             <option value="veo-3.0-generate-001">Veo 3.0</option>
             <option value="veo-3.1-fast-generate-preview">Veo 3.1 Fast (preview)</option>
             <option value="veo-3.1-generate-preview">Veo 3.1 (preview)</option>
             <option value="veo-3.1-lite-generate-preview">Veo 3.1 Lite (preview)</option>
-            <option value="sora-2">Sora 2</option>
-            <option value="sora-2-pro">Sora 2 Pro</option>
           </select>
         </div>
         <div class="row2">
           <div class="field">
             <label>Durasi</label>
-            <select id="videoSeconds">
-              <option value="4">4 detik</option>
-              <option value="6" selected>6 detik</option>
-              <option value="8">8 detik</option>
-            </select>
+            <select id="videoSeconds"></select>
           </div>
           <div class="field">
             <label>Resolusi</label>
-            <select id="videoSize">
-              <option value="1280x720" selected>720p (16:9)</option>
-              <option value="720x1280">720p vertikal (9:16)</option>
-              <option value="1920x1080">1080p (16:9)</option>
-            </select>
+            <select id="videoSize"></select>
           </div>
         </div>
         <button class="gen-btn video-go" id="genVideoBtn">

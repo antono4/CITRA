@@ -208,15 +208,39 @@ $('makeVideoBtn').onclick=()=>{
 };
 $('closeVideoBtn').onclick=()=>$('videoPanel').classList.remove('on');
 
+// durasi & resolusi yang valid per model (dari docs.puter.com/AI/txt2vid)
+const VIDEO_PRESETS={
+  'sora-2':      {seconds:[4,8,12], sizes:['1280x720','720x1280','1024x1792','1792x1024']},
+  'sora-2-pro':  {seconds:[4,8,12], sizes:['1280x720','720x1280','1024x1792','1792x1024']},
+  'veo-2.0-generate-001':          {seconds:[5,6,8], sizes:['1280x720','720x1280']},
+  'veo-3.0-generate-001':          {seconds:[4,6,8], sizes:['1280x720','720x1280','1920x1080']},
+  'veo-3.0-fast-generate-001':     {seconds:[4,6,8], sizes:['1280x720','720x1280','1920x1080']},
+  'veo-3.1-generate-preview':      {seconds:[4,6,8], sizes:['1280x720','720x1280','1920x1080','3840x2160']},
+  'veo-3.1-fast-generate-preview': {seconds:[4,6,8], sizes:['1280x720','720x1280','1920x1080','3840x2160']},
+  'veo-3.1-lite-generate-preview': {seconds:[4,6,8], sizes:['1280x720','720x1280','1920x1080']},
+};
+function fillVideoPresets(){
+  const p=VIDEO_PRESETS[$('videoModel').value]||VIDEO_PRESETS['sora-2'];
+  const fmtSize=s=>{
+    const [w,h]=s.split('x').map(Number);
+    const orient=w>h?'lanskap':w<h?'vertikal':'persegi';
+    return `${s} (${orient})`;
+  };
+  $('videoSeconds').innerHTML=p.seconds.map(s=>`<option value="${s}">${s} detik</option>`).join('');
+  $('videoSeconds').value=String(p.seconds[1]??p.seconds[0]);
+  $('videoSize').innerHTML=p.sizes.map(s=>`<option value="${s}">${fmtSize(s)}</option>`).join('');
+}
+$('videoModel').addEventListener('change',fillVideoPresets);
+fillVideoPresets();
+
 $('genVideoBtn').onclick=async()=>{
   const src=currentImageSrc();
   if(!src){ toast('Belum ada gambar untuk dianimasikan.'); return; }
 
   const motion=$('videoPrompt').value.trim();
   const model=$('videoModel').value.trim();
-  const options={};
-  if(model) options.model=model;
-  options.seconds=parseInt($('videoSeconds').value)||6;
+  const options={model};
+  options.seconds=parseInt($('videoSeconds').value)||4;
   options.size=$('videoSize').value;
   options.input_reference=await toDataURI(src); // frame pertama = gambar hasil generate
 

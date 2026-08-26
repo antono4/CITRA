@@ -82,7 +82,7 @@ $('genBtn').onclick=async()=>{
   if(!base){ toast('Tulis prompt dulu ya.'); $('prompt').focus(); return; }
 
   const styled = base + [...activeStyles].map(i=>STYLES[i].text).join('');
-  const model=$('model').value;
+  const model=$('model').value.trim();
   const r=RATIOS[ratioIdx];
   const seedVal=$('seed').value.trim();
   const options={};
@@ -111,7 +111,8 @@ $('genBtn').onclick=async()=>{
 
   const t0=performance.now();
   try{
-    const img=await puter.ai.txt2img(styled, options);
+    const hasOpts=Object.keys(options).length>0;
+    const img=await puter.ai.txt2img(styled, hasOpts?options:undefined);
     const secs=((performance.now()-t0)/1000).toFixed(1);
     const src=img.src;
 

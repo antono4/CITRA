@@ -1,259 +1,252 @@
 const $ = id => document.getElementById(id);
 
-/* ---------- style presets ---------- */
-const STYLES = [
-  {label:'Fotorealistis', text:', ultra realistic photograph, 85mm lens, cinematic lighting, high detail'},
-  {label:'Anime', text:', anime style, studio ghibli inspired, vibrant colors, detailed background'},
-  {label:'Cat Air', text:', delicate watercolor painting, soft washes, paper texture'},
-  {label:'3D Render', text:', polished 3d render, octane, soft studio lighting, high detail'},
-  {label:'Pixel Art', text:', retro pixel art, 16-bit, limited palette'},
-  {label:'Batik Nusantara', text:', traditional javanese batik pattern style, intricate ornament, warm sogan colors'},
-  {label:'Cyberpunk', text:', cyberpunk aesthetic, neon glow, rain, night city, cinematic'},
-  {label:'Minimalis', text:', minimalist flat illustration, clean shapes, muted palette'},
-];
-const activeStyles = new Set();
-STYLES.forEach((s,i)=>{
-  const b=document.createElement('button');
-  b.className='chip'; b.textContent=s.label;
-  b.onclick=()=>{ activeStyles.has(i)?activeStyles.delete(i):activeStyles.add(i); b.classList.toggle('on'); };
-  $('styleChips').appendChild(b);
+/* ---------- backend config ---------- */
+// Tersimpan di localStorage — GitHub Pages bersifat statis, jadi setiap
+// pengunjung mengatur URL backend Pixelle-Video miliknya sendiri.
+let baseUrl = (localStorage.getItem('citra_backend') || '').replace(/\/+$/, '');
+
+function api(path){ return baseUrl + path; }
+
+async function fetchJSON(path, opts){
+  const res = await fetch(api(path), opts);
+  if(!res.ok){
+    let detail = 'HTTP ' + res.status;
+    try{ const j = await res.json(); if(j.detail) detail = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail); }catch(e){}
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+/* ---------- backend settings bar ---------- */
+$('backendUrl').value = baseUrl;
+$('backendBtn').onclick = ()=> $('backendBar').classList.toggle('on');
+$('backendUrl').addEventListener('change', ()=>{
+  baseUrl = $('backendUrl').value.trim().replace(/\/+$/, '');
+  localStorage.setItem('citra_backend', baseUrl);
+  refreshConn();
 });
 
-/* ---------- aspect ratios ---------- */
-/* rw/rh = rasio dalam unit kecil untuk provider yang menerima rasio (Gemini/Replicate) */
-const RATIOS=[
-  {label:'1:1', w:1024,h:1024, rw:1, rh:1,  bw:16,bh:16},
-  {label:'3:2', w:1536,h:1024, rw:3, rh:2,  bw:20,bh:13},
-  {label:'2:3', w:1024,h:1536, rw:2, rh:3,  bw:13,bh:20},
-  {label:'16:9',w:1536,h:864,  rw:16,rh:9,  bw:22,bh:12},
-  {label:'9:16',w:864, h:1536, rw:9, rh:16, bw:12,bh:22},
+async function refreshConn(){
+  const el = $('connStatus');
+  if(!baseUrl){ el.textContent = 'belum diatur'; el.className = 'conn'; return; }
+  el.textContent = 'mengecek…'; el.className = 'conn';
+  try{
+    await fetchJSON('/health');
+    el.textContent = '● terhubung'; el.className = 'conn ok';
+  }catch(e){
+    el.textContent = '○ gagal terhubung'; el.className = 'conn bad';
+  }
+}
+$('testBtn').onclick = refreshConn;
+refreshConn();
+
+/* ---------- ukuran video (folder template Pixelle) ---------- */
+const RATIOS = [
+  {label:'9:16', size:'1080x1920', desc:'TikTok/Reels/Shorts', bw:12, bh:22},
+  {label:'16:9', size:'1920x1080', desc:'YouTube',            bw:22, bh:12},
+  {label:'1:1',  size:'1080x1080', desc:'Feed',               bw:16, bh:16},
 ];
-let ratioIdx=0;
+let ratioIdx = 0;
 RATIOS.forEach((r,i)=>{
-  const b=document.createElement('button');
-  b.className='ratio'+(i===0?' on':'');
-  b.innerHTML=`<span class="box" style="width:${r.bw}px;height:${r.bh}px"></span>${r.label}`;
-  b.onclick=()=>{ ratioIdx=i; document.querySelectorAll('.ratio').forEach((x,j)=>x.classList.toggle('on',j===i)); };
+  const b = document.createElement('button');
+  b.className = 'ratio' + (i===0 ? ' on' : '');
+  b.innerHTML = `<span class="box" style="width:${r.bw}px;height:${r.bh}px"></span>${r.label}`;
+  b.onclick = ()=>{
+    ratioIdx = i;
+    document.querySelectorAll('.ratio').forEach((x,j)=>x.classList.toggle('on', j===i));
+    fillTemplates();
+  };
   $('ratios').appendChild(b);
 });
 
-/* ---------- model / provider handling ---------- */
-const MODEL_KINDS={
-  'gpt-image-1-mini':'openai', 'gpt-image-1':'openai', 'gpt-image-1.5':'openai', 'gpt-image-2':'openai',
-  'gemini-3.1-flash-image-preview':'gemini',
-  'grok-imagine-image':'xai', 'grok-imagine-image-quality':'xai',
-  'black-forest-labs/flux-schnell':'replicate', 'black-forest-labs/flux-1.1-pro':'replicate',
-  'black-forest-labs/flux-2-dev':'replicate', 'black-forest-labs/flux-2-pro':'replicate',
-  'black-forest-labs/flux-2-klein-9b-base':'replicate',
-  'leonardoai/lucid-origin':'replicate', 'leonardoai/phoenix-1.0':'replicate',
-};
-// Model default Puter adalah gpt-image-1-mini (OpenAI) — sesuai dokumentasi txt2img.
-const kindOf=m=>MODEL_KINDS[m]||'openai';
+/* ---------- template visual (dimuat dari backend, fallback bawaan) ---------- */
+const FALLBACK_TEMPLATES = [
+  'image_default.html','image_full.html','image_minimal_framed.html','image_cartoon.html',
+  'image_elegant.html','image_book.html','image_modern.html','image_neon.html',
+  'image_blur_card.html','asset_default.html',
+];
 
-const QUALITY_OPTS={
-  openai:[['low','Rendah (paling cepat)'],['medium','Sedang'],['high','Tinggi (paling lambat)']],
-  gemini:[['1K','1K (paling cepat)'],['2K','2K (lebih tajam)'],['4K','4K (paling detail)']],
-  xai:[['1k','1K (paling cepat)'],['2k','2K (lebih tajam)']],
-};
-
-function updateModelFields(){
-  const k=kindOf($('model').value);
-  if(QUALITY_OPTS[k]){
-    $('quality').innerHTML=QUALITY_OPTS[k].map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
-    $('qualityField').style.display='block';
-  }else{
-    $('qualityField').style.display='none';
+async function fillTemplates(){
+  const size = RATIOS[ratioIdx].size;
+  let keys = [];
+  if(baseUrl){
+    try{
+      const data = await fetchJSON('/api/resources/templates');
+      keys = (data.templates || []).filter(t => t.size === size).map(t => t.key);
+    }catch(e){ /* backend belum siap — pakai fallback */ }
   }
-  $('seedField').style.display = k==='replicate' ? 'block':'none';
+  if(!keys.length) keys = FALLBACK_TEMPLATES.map(n => `${size}/${n}`);
+  $('template').innerHTML = keys.map(k => `<option value="${k}">${k.split('/')[1].replace('.html','').replace(/_/g,' ')}</option>`).join('');
 }
-$('model').addEventListener('change',updateModelFields);
-updateModelFields();
 
-/* ---------- auth ---------- */
-async function refreshAuth(){
-  try{
-    const signed = await puter.auth.isSignedIn();
-    const btn=$('authBtn');
-    if(signed){
-      const u=await puter.auth.getUser();
-      btn.textContent='✓ '+u.username;
-      btn.classList.add('signed');
-    }else{
-      btn.textContent='Masuk dengan Puter';
-      btn.classList.remove('signed');
-    }
-  }catch(e){ /* abaikan */ }
+/* ---------- musik latar (dimuat dari backend) ---------- */
+async function fillBgm(){
+  let opts = [['', 'Tanpa musik']];
+  if(baseUrl){
+    try{
+      const data = await fetchJSON('/api/resources/bgm');
+      (data.bgm_files || []).forEach(b => opts.push([b.path, b.name]));
+    }catch(e){}
+  }
+  if(opts.length === 1) opts.push(['bgm/default.mp3', 'default.mp3 (bawaan)']);
+  $('bgm').innerHTML = opts.map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
 }
-$('authBtn').onclick=async()=>{
-  try{
-    if(await puter.auth.isSignedIn()){ await puter.auth.signOut(); }
-    else{ await puter.auth.signIn(); }
-  }catch(e){}
-  refreshAuth();
-};
-refreshAuth();
+
+fillTemplates();
+fillBgm();
+$('backendUrl').addEventListener('change', ()=>{ fillTemplates(); fillBgm(); });
+
+/* ---------- mode naskah: jumlah adegan hanya untuk mode generate ---------- */
+$('mode').addEventListener('change', ()=>{
+  $('scenesField').style.display = $('mode').value === 'generate' ? 'block' : 'none';
+});
 
 /* ---------- toast ---------- */
 let toastT;
 function toast(msg){
-  const t=$('toast'); t.textContent=msg; t.classList.add('on');
-  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),4200);
+  const t = $('toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove('on'), 5000);
 }
 
 /* ---------- generation ---------- */
-const history=[];
-const SHIMMER_LINES=['AI sedang melukis…','Mencampur warna digital…','Menenun piksel…','Hampir selesai…'];
-const GEN_TIMEOUT=3*60*1000;
-let shimmerInt;
+const history = [];
+const POLL_MS = 3000;
+const POLL_MAX = 30 * 60 * 1000; // 30 menit
 
-// GPT Image selain gpt-image-2 hanya menerima ukuran tetap — ambil yang rasio-nya paling dekat.
-const OPENAI_SIZES=[[1024,1024],[1536,1024],[1024,1536]];
-function snapOpenAISize(w,h){
-  const t=w/h;
-  return OPENAI_SIZES.reduce((a,b)=>Math.abs(a[0]/a[1]-t)<=Math.abs(b[0]/b[1]-t)?a:b);
+function fmtSize(bytes){
+  if(!bytes && bytes !== 0) return '';
+  if(bytes > 1048576) return (bytes/1048576).toFixed(1) + ' MB';
+  return Math.round(bytes/1024) + ' KB';
 }
 
-function errText(err){
-  const parts=[err&&err.message, err&&err.code, err&&err.error&&(err.error.message||err.error.code)];
-  let s=parts.filter(Boolean).join(' ');
-  if(!s){ try{ s=JSON.stringify(err); }catch(e){ s=String(err||''); } }
-  return s||'';
+async function pollTask(taskId, onProgress){
+  const deadline = Date.now() + POLL_MAX;
+  for(;;){
+    const task = await fetchJSON('/api/tasks/' + taskId);
+    if(task.status === 'completed') return task.result;
+    if(task.status === 'failed')    throw new Error(task.error || 'Tugas gagal di backend.');
+    if(task.status === 'cancelled') throw new Error('Tugas dibatalkan.');
+    if(Date.now() > deadline)       throw new Error('Terlalu lama — cek antrean tugas di backend.');
+    onProgress(task);
+    await new Promise(r => setTimeout(r, POLL_MS));
+  }
 }
 
-function withTimeout(promise,ms){
-  return Promise.race([
-    promise,
-    new Promise((_,rej)=>setTimeout(()=>rej(new Error('Timeout — permintaan tidak selesai. Tutup jendela login Puter lalu coba lagi.')),ms)),
-  ]);
-}
-
-$('genBtn').onclick=async()=>{
-  const base=$('prompt').value.trim();
-  if(!base){ toast('Tulis prompt dulu ya.'); $('prompt').focus(); return; }
-
-  const styled = base + [...activeStyles].map(i=>STYLES[i].text).join('');
-  const model=$('model').value;
-  const r=RATIOS[ratioIdx];
-  const seedVal=$('seed').value.trim();
-  const options={};
-
-  const kind=kindOf(model);
-  let dispW=r.w, dispH=r.h;
-
-  if(kind==='openai'){
-    options.provider='openai-image-generation';
-    if(model) options.model=model;
-    options.quality=$('quality').value;
-    [dispW,dispH]=snapOpenAISize(r.w,r.h);
-    options.ratio={w:dispW,h:dispH};
-  }else if(kind==='gemini'){
-    options.provider='gemini';
-    options.model=model;
-    options.quality=$('quality').value;
-    options.ratio={w:r.rw,h:r.rh};
-  }else if(kind==='xai'){
-    options.provider='xai';
-    options.model=model;
-    options.quality=$('quality').value;
-  }else if(kind==='replicate'){
-    options.provider='replicate-image-generation';
-    options.model=model;
-    options.ratio={w:r.rw,h:r.rh};
-    if(seedVal) options.seed=parseInt(seedVal);
+$('genBtn').onclick = async ()=>{
+  const text = $('prompt').value.trim();
+  if(!text){ toast('Tulis topik dulu ya.'); $('prompt').focus(); return; }
+  if(!baseUrl){
+    toast('Atur dulu URL backend Pixelle-Video (klik "Atur Backend" di kanan atas).');
+    $('backendBar').classList.add('on');
+    $('backendUrl').focus();
+    return;
   }
 
-  const btn=$('genBtn');
-  btn.disabled=true; btn.classList.add('loading');
-  $('genLabel').textContent='Memproses…';
+  const mode = $('mode').value;
+  const body = {
+    text,
+    mode,
+    frame_template: $('template').value,
+    video_fps: 30,
+    bgm_volume: parseFloat($('bgmVolume').value) || 0.3,
+  };
+  const title = $('title').value.trim();
+  if(title) body.title = title;
+  if(mode === 'generate') body.n_scenes = parseInt($('scenes').value) || 5;
+  const prefix = $('promptPrefix').value.trim();
+  if(prefix) body.prompt_prefix = prefix;
+  const bgm = $('bgm').value;
+  if(bgm) body.bgm_path = bgm;
+
+  const btn = $('genBtn');
+  btn.disabled = true; btn.classList.add('loading');
+  $('genLabel').textContent = 'Memproses…';
   $('shimmer').classList.add('on');
-  $('emptyState').style.display='none';
-  const old=$('viewport').querySelector('img.result'); if(old) old.remove();
-  let li=0;
-  $('shimmerText').textContent=SHIMMER_LINES[0];
-  shimmerInt=setInterval(()=>{ li=(li+1)%SHIMMER_LINES.length; $('shimmerText').textContent=SHIMMER_LINES[li]; },2200);
+  $('emptyState').style.display = 'none';
+  const old = $('viewport').querySelector('video.result'); if(old) old.remove();
 
-  const t0=performance.now();
+  const t0 = performance.now();
   try{
-    // Pastikan sudah login SEBELUM memanggil txt2img — kalau tidak, SDK membuka
-    // jendela sign-in dan promise-nya menggantung selamanya (UI macet "Memproses…").
-    let signed=false;
-    try{ signed=await puter.auth.isSignedIn(); }catch(e){}
-    if(!signed){
-      $('genLabel').textContent='Menunggu login…';
-      try{
-        await puter.auth.signIn();
-      }catch(e){
-        throw Object.assign(new Error('Perlu masuk dulu — klik "Masuk dengan Puter" di kanan atas.'),{code:'auth_required'});
-      }
-      refreshAuth();
-    }
-    $('genLabel').textContent='Memproses…';
+    $('shimmerText').textContent = 'Mengirim tugas ke backend…';
+    const { task_id } = await fetchJSON('/api/video/generate/async', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
 
-    const img=await withTimeout(puter.ai.txt2img(styled, options), GEN_TIMEOUT);
-    const secs=((performance.now()-t0)/1000).toFixed(1);
-    const src=img.src;
+    const result = await pollTask(task_id, task => {
+      const p = task.progress;
+      $('shimmerText').textContent = (p && p.message)
+        ? `${p.message} (${Math.round(p.percentage)}%)`
+        : 'Backend sedang membuat video… (script → gambar → suara → musik)';
+    });
 
-    img.className='result';
-    img.alt=base;
-    $('viewport').appendChild(img);
+    const secs = ((performance.now() - t0) / 1000).toFixed(1);
+    const vid = document.createElement('video');
+    vid.className = 'result';
+    vid.controls = true;
+    vid.autoplay = true;
+    vid.loop = true;
+    vid.muted = true; // autoplay butuh mute; pengguna bisa nyalakan suara di kontrol
+    vid.playsInline = true;
+    vid.src = result.video_url;
+    $('viewport').appendChild(vid);
 
-    const modelLabel=model?$('model').selectedOptions[0].textContent:'Default (GPT Image 1 Mini)';
-    const dims=kind==='openai'?` (${dispW}×${dispH})`:'';
-    $('resultMeta').innerHTML=
-      `“${base.length>80?base.slice(0,80)+'…':base}”<br>`+
-      `${modelLabel} · ${r.label}${dims} · ${secs}s`;
-    $('downloadBtn').href=src;
-    $('downloadBtn').setAttribute('download','citra-'+Date.now()+'.png');
+    const dur = result.duration ? result.duration.toFixed(1) + 's' : '?';
+    $('resultMeta').innerHTML =
+      `“${text.length > 80 ? text.slice(0,80) + '…' : text}”<br>` +
+      `${RATIOS[ratioIdx].label} · ${dur} · ${fmtSize(result.file_size)} · dibuat dalam ${secs}s`;
+    $('downloadBtn').href = result.video_url;
+    $('downloadBtn').setAttribute('download', 'citra-' + Date.now() + '.mp4');
     $('resultBar').classList.add('on');
 
-    history.unshift({src,prompt:base});
+    history.unshift({ src: result.video_url, prompt: text, meta: `${RATIOS[ratioIdx].label} · ${dur}` });
     renderHistory();
   }catch(err){
     console.error(err);
-    const msg=errText(err);
-    if(/auth|sign|401|403|unauthor|permission|login/i.test(msg)){
-      toast('Perlu masuk dulu — klik "Masuk dengan Puter" di kanan atas.');
-    }else if(/insufficient|quota|credit|balance|billing|funding|upgrade/i.test(msg)){
-      toast('Saldo akun Puter tidak cukup — isi ulang di puter.com (dashboard → billing), atau coba model lain.');
+    const msg = (err && err.message) || '';
+    if(/failed to fetch|networkerror|load failed/i.test(msg)){
+      toast('Tidak bisa menghubungi backend — pastikan URL benar dan server Pixelle sedang berjalan.');
     }else{
-      toast('Gagal membuat gambar: '+(msg||'coba lagi atau ganti model.'));
+      toast('Gagal membuat video: ' + (msg || 'coba lagi.'));
     }
-    if(!history.length) $('emptyState').style.display='';
+    if(!history.length) $('emptyState').style.display = '';
   }finally{
-    clearInterval(shimmerInt);
     $('shimmer').classList.remove('on');
-    btn.disabled=false; btn.classList.remove('loading');
-    $('genLabel').textContent='Generate Gambar';
+    btn.disabled = false; btn.classList.remove('loading');
+    $('genLabel').textContent = 'Generate Video';
   }
 };
 
-$('copyPromptBtn').onclick=()=>{
-  navigator.clipboard.writeText($('prompt').value).then(()=>toast('Prompt disalin ✓'));
+$('copyPromptBtn').onclick = ()=>{
+  navigator.clipboard.writeText($('prompt').value).then(()=>toast('Topik disalin ✓'));
 };
 
 function renderHistory(){
-  $('histCount').textContent=history.length;
-  const g=$('grid'); g.innerHTML='';
-  history.forEach((h,i)=>{
-    const d=document.createElement('div');
-    d.className='thumb';
-    d.innerHTML=`<img src="${h.src}" alt="${h.prompt.replace(/"/g,'&quot;')}">
-      <a class="dl" href="${h.src}" download="citra-${i}.png" title="Unduh" onclick="event.stopPropagation()">⬇</a>`;
-    d.onclick=()=>{
-      const old=$('viewport').querySelector('img.result'); if(old) old.remove();
-      $('emptyState').style.display='none';
-      const im=new Image(); im.src=h.src; im.className='result';
-      $('viewport').appendChild(im);
-      $('downloadBtn').href=h.src;
-      $('resultMeta').innerHTML=`“${h.prompt}”`;
+  $('histCount').textContent = history.length;
+  const g = $('grid'); g.innerHTML = '';
+  history.forEach((h, i)=>{
+    const d = document.createElement('div');
+    d.className = 'thumb';
+    d.innerHTML = `<video src="${h.src}" muted preload="metadata"></video>
+      <a class="dl" href="${h.src}" download="citra-${i}.mp4" title="Unduh" onclick="event.stopPropagation()">⬇</a>`;
+    d.onclick = ()=>{
+      const old = $('viewport').querySelector('video.result'); if(old) old.remove();
+      $('emptyState').style.display = 'none';
+      const v = document.createElement('video');
+      v.src = h.src; v.className = 'result';
+      v.controls = true; v.autoplay = true; v.loop = true; v.playsInline = true;
+      $('viewport').appendChild(v);
+      $('downloadBtn').href = h.src;
+      $('resultMeta').innerHTML = `“${h.prompt}”<br>${h.meta || ''}`;
       $('resultBar').classList.add('on');
-      window.scrollTo({top:0,behavior:'smooth'});
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     };
     g.appendChild(d);
   });
 }
 
 /* Ctrl+Enter untuk generate */
-$('prompt').addEventListener('keydown',e=>{
-  if((e.ctrlKey||e.metaKey)&&e.key==='Enter') $('genBtn').click();
+$('prompt').addEventListener('keydown', e=>{
+  if((e.ctrlKey || e.metaKey) && e.key === 'Enter') $('genBtn').click();
 });

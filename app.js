@@ -213,8 +213,8 @@ $('genBtn').onclick=async()=>{
     const msg=errText(err);
     if(/auth|sign|401|403|unauthor|permission|login/i.test(msg)){
       toast('Perlu masuk dulu — klik "Masuk dengan Puter" di kanan atas.');
-    }else if(/insufficient|quota|credit|balance|billing/i.test(msg)){
-      toast('Kuota/kredit Puter habis untuk model ini — coba model lain.');
+    }else if(/insufficient|quota|credit|balance|billing|funding|upgrade/i.test(msg)){
+      toast('Saldo akun Puter tidak cukup — isi ulang di puter.com (dashboard → billing), atau coba model lain.');
     }else{
       toast('Gagal membuat gambar: '+(msg||'coba lagi atau ganti model.'));
     }

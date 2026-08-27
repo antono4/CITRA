@@ -1,0 +1,7 @@
+fastapi>=0.115
+uvicorn>=0.30
+pydantic>=2.0
+agno>=2.2.10
+openai>=1.102.0
+firecrawl-py>=4.6.0
+elevenlabs>=1.0.0

@@ -59,14 +59,15 @@ header{
   padding:18px 40px;border-bottom:1px solid var(--line);background:var(--bg-2);
 }
 .backend-bar.on{display:flex}
-.backend-bar .field{flex:1;min-width:240px}
+.backend-bar .field{flex:1;min-width:200px}
+.backend-bar .field.grow{flex:2}
 .backend-bar .field label{margin-bottom:6px}
-input[type=url]{
+input[type=url],input[type=password]{
   width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;
   color:var(--cream);font-family:'IBM Plex Mono',monospace;font-size:12px;
   padding:11px 14px;outline:none;transition:border-color .25s;
 }
-input[type=url]:focus{border-color:var(--accent)}
+input[type=url]:focus,input[type=password]:focus{border-color:var(--accent)}
 .conn{font-size:11px;letter-spacing:.08em;color:var(--cream-dim);padding-bottom:12px}
 .conn.ok{color:var(--accent)}
 .conn.bad{color:var(--ember)}
@@ -161,6 +162,25 @@ select{appearance:none;cursor:pointer;
 .viewport img.result,.viewport video.result{
   max-width:100%;max-height:72vh;display:block;
   animation:reveal .6s cubic-bezier(.2,.8,.2,1) both;
+}
+/* ---- podcast player ---- */
+.podcast{
+  display:flex;flex-direction:column;gap:16px;align-items:center;
+  padding:36px 28px;width:min(560px,90%);
+  animation:reveal .6s cubic-bezier(.2,.8,.2,1) both;
+}
+.podcast audio{width:100%}
+.podcast details{
+  width:100%;border:1px solid var(--line);border-radius:12px;
+  background:var(--panel);padding:12px 16px;
+}
+.podcast summary{
+  cursor:pointer;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--cream-dim);
+}
+.podcast details p{margin-top:10px;font-size:12px;line-height:1.7;color:var(--cream)}
+.thumb .thumb-icon{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px;
 }
 @keyframes reveal{from{opacity:0;transform:scale(.97);filter:blur(8px)}to{opacity:1;transform:scale(1);filter:blur(0)}}
 .shimmer{

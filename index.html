@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CITRA — Studio AI Generator Video</title>
+<title>CITRA — Studio AI Podcast dari Blog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -14,15 +14,27 @@
 <header>
   <div class="brand">
     <h1>CITRA<em>.</em></h1>
-    <span class="tag">Studio AI Generator Video</span>
+    <span class="tag">Studio AI Podcast dari Blog</span>
   </div>
-  <button class="auth-btn" id="backendBtn">Atur Backend</button>
+  <button class="auth-btn" id="backendBtn">Atur Backend &amp; Kunci</button>
 </header>
 
 <div class="backend-bar" id="backendBar">
+  <div class="field grow">
+    <label>URL Backend CITRA</label>
+    <input type="url" id="backendUrl" placeholder="https://backend.contoh.com">
+  </div>
   <div class="field">
-    <label>URL Backend Pixelle-Video</label>
-    <input type="url" id="backendUrl" placeholder="https://pixelle.contoh.com">
+    <label>OpenAI API Key</label>
+    <input type="password" id="openaiKey" placeholder="sk-…" autocomplete="off">
+  </div>
+  <div class="field">
+    <label>ElevenLabs API Key</label>
+    <input type="password" id="elevenlabsKey" placeholder="eleven_…" autocomplete="off">
+  </div>
+  <div class="field">
+    <label>Firecrawl API Key</label>
+    <input type="password" id="firecrawlKey" placeholder="fc-…" autocomplete="off">
   </div>
   <button class="btn-ghost" id="testBtn">Uji Koneksi</button>
   <span class="conn" id="connStatus"></span>
@@ -32,59 +44,19 @@
   <!-- ============ CONTROL PANEL ============ -->
   <section class="panel">
     <div class="field">
-      <label>Topik / naskah — tentang apa videonya?</label>
-      <textarea id="prompt" placeholder="contoh: 5 fakta unik tentang komodo, kadal purba dari NTT…"></textarea>
+      <label>URL Blog — tempel alamat artikelnya</label>
+      <textarea id="prompt" placeholder="https://blog.contoh.com/artikel-menarik…"></textarea>
     </div>
 
     <div class="field">
-      <label>Mode naskah</label>
-      <select id="mode">
-        <option value="generate" selected>AI tulis narasi dari topik</option>
-        <option value="fixed">Pakai teks apa adanya (narasi sendiri)</option>
-      </select>
-    </div>
-
-    <div class="row2">
-      <div class="field">
-        <label>Judul (opsional)</label>
-        <input type="text" id="title" placeholder="otomatis">
-      </div>
-      <div class="field" id="scenesField">
-        <label>Jumlah adegan</label>
-        <input type="number" id="scenes" value="5" min="1" max="20">
-      </div>
-    </div>
-
-    <div class="field">
-      <label>Ukuran video</label>
-      <div class="ratios" id="ratios"></div>
-    </div>
-
-    <div class="field">
-      <label>Template visual</label>
-      <select id="template"></select>
-    </div>
-
-    <div class="field">
-      <label>Gaya gambar (opsional)</label>
-      <input type="text" id="promptPrefix" placeholder="mis: gaya cat air, warna hangat senja">
-    </div>
-
-    <div class="row2">
-      <div class="field">
-        <label>Musik latar</label>
-        <select id="bgm"></select>
-      </div>
-      <div class="field">
-        <label>Volume musik</label>
-        <input type="number" id="bgmVolume" value="0.3" min="0" max="1" step="0.1">
-      </div>
+      <label>Suara ElevenLabs (opsional)</label>
+      <input type="text" id="voiceId" placeholder="default: JBFqnCBsd6RMkjVDRZzb (George)">
     </div>
 
     <button class="gen-btn" id="genBtn">
-      <span class="spin">◌</span> <span id="genLabel">Generate Video</span>
+      <span class="spin">◌</span> <span id="genLabel">Generate Podcast</span>
     </button>
-    <p class="hint">Ditenagai <b>Pixelle-Video</b> — engine video open-source yang kamu hosting sendiri. Isi URL backend di kanan atas, lalu pastikan backend sudah berjalan (lihat repo ATH-MaaS/Pixelle-Video). Video dibuat lewat antrean tugas: halaman ini mengecek progres tiap 3 detik. Shortcut: Ctrl+Enter.</p>
+    <p class="hint">Ditenagai <b>ai_blog_to_podcast_agent</b> (awesome-llm-apps) — dibungkus jadi API di folder <code>backend/</code> repo ini. Jalankan backend di servermu, isi URL-nya di atas, lalu masukkan 3 API key (disimpan hanya di browsermu, dikirim langsung ke backend, tidak pernah disimpan server). Blog dikurasi jadi ringkasan oleh GPT-4o lalu disuarakan oleh ElevenLabs. Shortcut: Ctrl+Enter.</p>
   </section>
 
   <!-- ============ STAGE ============ -->
@@ -92,7 +64,7 @@
     <div class="viewport" id="viewport">
       <div class="empty" id="emptyState">
         <span class="glyph">✳</span>
-        <p>BELUM ADA VIDEO — TULIS TOPIK LALU TEKAN GENERATE</p>
+        <p>BELUM ADA PODCAST — TEMPEL URL BLOG LALU TEKAN GENERATE</p>
       </div>
       <div class="shimmer" id="shimmer">
         <div class="bar"></div>
@@ -103,8 +75,8 @@
     <div class="result-bar" id="resultBar">
       <div class="meta" id="resultMeta"></div>
       <div class="actions">
-        <a class="btn-ghost" id="downloadBtn" download="citra.mp4">⬇ Unduh MP4</a>
-        <button class="btn-ghost" id="copyPromptBtn">⧉ Salin Topik</button>
+        <a class="btn-ghost" id="downloadBtn" download="citra.mp3">⬇ Unduh MP3</a>
+        <button class="btn-ghost" id="copyPromptBtn">⧉ Salin URL</button>
       </div>
     </div>
 

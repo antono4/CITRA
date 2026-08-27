@@ -47,7 +47,8 @@ const MODEL_KINDS={
   'black-forest-labs/flux-2-klein-9b-base':'replicate',
   'leonardoai/lucid-origin':'replicate', 'leonardoai/phoenix-1.0':'replicate',
 };
-const kindOf=m=>MODEL_KINDS[m]||'together';
+// Model default Puter adalah gpt-image-1-mini (OpenAI) — sesuai dokumentasi txt2img.
+const kindOf=m=>MODEL_KINDS[m]||'openai';
 
 const QUALITY_OPTS={
   openai:[['low','Rendah (paling cepat)'],['medium','Sedang'],['high','Tinggi (paling lambat)']],
@@ -63,10 +64,7 @@ function updateModelFields(){
   }else{
     $('qualityField').style.display='none';
   }
-  $('sizeField').style.display     = k==='together' ? 'block':'none';
-  $('stepsField').style.display    = k==='together' ? 'block':'none';
-  $('negativeField').style.display = k==='together' ? 'block':'none';
-  $('seedField').style.display     = (k==='together'||k==='replicate') ? 'block':'none';
+  $('seedField').style.display = k==='replicate' ? 'block':'none';
 }
 $('model').addEventListener('change',updateModelFields);
 updateModelFields();
@@ -105,7 +103,29 @@ function toast(msg){
 /* ---------- generation ---------- */
 const history=[];
 const SHIMMER_LINES=['AI sedang melukis…','Mencampur warna digital…','Menenun piksel…','Hampir selesai…'];
+const GEN_TIMEOUT=3*60*1000;
 let shimmerInt;
+
+// GPT Image selain gpt-image-2 hanya menerima ukuran tetap — ambil yang rasio-nya paling dekat.
+const OPENAI_SIZES=[[1024,1024],[1536,1024],[1024,1536]];
+function snapOpenAISize(w,h){
+  const t=w/h;
+  return OPENAI_SIZES.reduce((a,b)=>Math.abs(a[0]/a[1]-t)<=Math.abs(b[0]/b[1]-t)?a:b);
+}
+
+function errText(err){
+  const parts=[err&&err.message, err&&err.code, err&&err.error&&(err.error.message||err.error.code)];
+  let s=parts.filter(Boolean).join(' ');
+  if(!s){ try{ s=JSON.stringify(err); }catch(e){ s=String(err||''); } }
+  return s||'';
+}
+
+function withTimeout(promise,ms){
+  return Promise.race([
+    promise,
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error('Timeout — permintaan tidak selesai. Tutup jendela login Puter lalu coba lagi.')),ms)),
+  ]);
+}
 
 $('genBtn').onclick=async()=>{
   const base=$('prompt').value.trim();
@@ -118,17 +138,14 @@ $('genBtn').onclick=async()=>{
   const options={};
 
   const kind=kindOf(model);
-
-  // Skala ukuran hanya untuk model default (model lain pakai rasio/ukuran bawaan provider)
-  const scale=parseFloat($('size').value)||1;
-  const to8=n=>Math.max(8,Math.round(n/8)*8);
   let dispW=r.w, dispH=r.h;
 
   if(kind==='openai'){
     options.provider='openai-image-generation';
-    options.model=model;
+    if(model) options.model=model;
     options.quality=$('quality').value;
-    options.ratio={w:r.w,h:r.h};
+    [dispW,dispH]=snapOpenAISize(r.w,r.h);
+    options.ratio={w:dispW,h:dispH};
   }else if(kind==='gemini'){
     options.provider='gemini';
     options.model=model;
@@ -143,13 +160,6 @@ $('genBtn').onclick=async()=>{
     options.model=model;
     options.ratio={w:r.rw,h:r.rh};
     if(seedVal) options.seed=parseInt(seedVal);
-  }else{
-    dispW=to8(r.w*scale); dispH=to8(r.h*scale);
-    options.width=dispW; options.height=dispH;
-    options.steps=parseInt($('steps').value)||12;
-    if(seedVal) options.seed=parseInt(seedVal);
-    const neg=$('negative').value.trim();
-    if(neg) options.negative_prompt=neg;
   }
 
   const btn=$('genBtn');
@@ -164,7 +174,22 @@ $('genBtn').onclick=async()=>{
 
   const t0=performance.now();
   try{
-    const img=await puter.ai.txt2img(styled, options);
+    // Pastikan sudah login SEBELUM memanggil txt2img — kalau tidak, SDK membuka
+    // jendela sign-in dan promise-nya menggantung selamanya (UI macet "Memproses…").
+    let signed=false;
+    try{ signed=await puter.auth.isSignedIn(); }catch(e){}
+    if(!signed){
+      $('genLabel').textContent='Menunggu login…';
+      try{
+        await puter.auth.signIn();
+      }catch(e){
+        throw Object.assign(new Error('Perlu masuk dulu — klik "Masuk dengan Puter" di kanan atas.'),{code:'auth_required'});
+      }
+      refreshAuth();
+    }
+    $('genLabel').textContent='Memproses…';
+
+    const img=await withTimeout(puter.ai.txt2img(styled, options), GEN_TIMEOUT);
     const secs=((performance.now()-t0)/1000).toFixed(1);
     const src=img.src;
 
@@ -172,8 +197,8 @@ $('genBtn').onclick=async()=>{
     img.alt=base;
     $('viewport').appendChild(img);
 
-    const modelLabel=model?$('model').selectedOptions[0].textContent:'default';
-    const dims=(kind==='together'||kind==='openai')?` (${dispW}×${dispH})`:'';
+    const modelLabel=model?$('model').selectedOptions[0].textContent:'Default (GPT Image 1 Mini)';
+    const dims=kind==='openai'?` (${dispW}×${dispH})`:'';
     $('resultMeta').innerHTML=
       `“${base.length>80?base.slice(0,80)+'…':base}”<br>`+
       `${modelLabel} · ${r.label}${dims} · ${secs}s`;
@@ -185,9 +210,11 @@ $('genBtn').onclick=async()=>{
     renderHistory();
   }catch(err){
     console.error(err);
-    const msg=(err&&err.message)||'';
-    if(/auth|sign|401|403/i.test(msg)){
+    const msg=errText(err);
+    if(/auth|sign|401|403|unauthor|permission|login/i.test(msg)){
       toast('Perlu masuk dulu — klik "Masuk dengan Puter" di kanan atas.');
+    }else if(/insufficient|quota|credit|balance|billing/i.test(msg)){
+      toast('Kuota/kredit Puter habis untuk model ini — coba model lain.');
     }else{
       toast('Gagal membuat gambar: '+(msg||'coba lagi atau ganti model.'));
     }

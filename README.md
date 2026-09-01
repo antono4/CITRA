@@ -1,2 +1,26 @@
-Last updated: 2026-09-02 04:59:09 WIB
-Last updated: 2026-09-02 05:05:40 WIB
+# CITRA
+
+
+
+## 📋 Overview
+
+This repository contains **9 files** and is built with the following technologies:
+
+HTML, CSS, JavaScript
+
+## 🚀 Quick Start
+
+## ✨ Features
+
+- 📝 Auto-generated documentation
+
+## 🛠️ Technologies
+
+HTML, CSS, JavaScript
+
+## 📄 License
+
+MIT License
+
+---
+*Last updated: 2026-09-02 05:28:49 WIB*
